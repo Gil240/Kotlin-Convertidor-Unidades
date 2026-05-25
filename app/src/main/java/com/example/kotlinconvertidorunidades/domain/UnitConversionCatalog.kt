@@ -101,6 +101,12 @@ object UnitConversionCatalog {
         return summaries
     }
 
+    fun getUnitSymbolsByCategory(): Map<String, List<String>> {
+        return unitsByCategory.mapValues { entry ->
+            entry.value.map { unit -> unit.symbol }
+        }
+    }
+
     fun categoryHasUnit(categoryId: String?, unitQuery: String?): Boolean {
         return getUnitsForCategory(categoryId).any { unit ->
             unit.matches(unitQuery)
