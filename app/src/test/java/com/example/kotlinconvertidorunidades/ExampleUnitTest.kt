@@ -34,6 +34,79 @@ class ExampleUnitTest {
         val symbols = lengthUnits.map { unit -> unit.symbol }
 
         assertTrue(symbols.contains("km"))
+        assertTrue(symbols.contains("ft"))
         assertTrue(UnitConversionCatalog.categoryHasUnit("peso", "lb"))
+    }
+
+    @Test
+    fun convertMetersToFeetReturnsExpectedValue() {
+        val response = UnitConversionCatalog.convertValue(
+            inputText = "1",
+            fromUnitQuery = "m",
+            toUnitQuery = "ft",
+            categoryId = "longitud"
+        )
+
+        when (response) {
+            is ConversionResponse.Success -> {
+                assertEquals(3.2808, response.result.convertedValue, 0.001)
+            }
+
+            is ConversionResponse.Error -> {
+                fail(response.message)
+            }
+        }
+    }
+
+    @Test
+    fun convertKilogramsToOuncesReturnsExpectedValue() {
+        val response = UnitConversionCatalog.convertValue(
+            inputText = "1",
+            fromUnitQuery = "kg",
+            toUnitQuery = "oz",
+            categoryId = "peso"
+        )
+
+        when (response) {
+            is ConversionResponse.Success -> {
+                assertEquals(35.274, response.result.convertedValue, 0.001)
+            }
+
+            is ConversionResponse.Error -> {
+                fail(response.message)
+            }
+        }
+    }
+
+    @Test
+    fun convertCurrencyWithFixedPracticeRate() {
+        val response = UnitConversionCatalog.convertValue(
+            inputText = "34",
+            fromUnitQuery = "MXN",
+            toUnitQuery = "USD",
+            categoryId = "moneda"
+        )
+
+        when (response) {
+            is ConversionResponse.Success -> {
+                assertEquals(2.0, response.result.convertedValue, 0.001)
+            }
+
+            is ConversionResponse.Error -> {
+                fail(response.message)
+            }
+        }
+    }
+
+    @Test
+    fun invalidInputReturnsErrorWithoutCrash() {
+        val response = UnitConversionCatalog.convertValue(
+            inputText = "abc",
+            fromUnitQuery = "C",
+            toUnitQuery = "F",
+            categoryId = "temperatura"
+        )
+
+        assertTrue(response is ConversionResponse.Error)
     }
 }

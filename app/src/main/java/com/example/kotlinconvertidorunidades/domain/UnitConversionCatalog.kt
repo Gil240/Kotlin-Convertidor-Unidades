@@ -45,12 +45,17 @@ object UnitConversionCatalog {
     private const val LENGTH = "longitud"
     private const val WEIGHT = "peso"
     private const val CURRENCY = "moneda"
+    private const val MXN_PER_USD = 17.0
+    private const val MXN_PER_EUR = 18.5
+    private const val MXN_PER_CAD = 12.4
+    private const val MXN_PER_GBP = 21.6
+    private const val MXN_PER_JPY = 0.12
 
     val categories: List<ConversionCategory> = listOf(
         ConversionCategory(TEMPERATURE, "Temperatura", "Celsius, Fahrenheit y Kelvin"),
-        ConversionCategory(LENGTH, "Longitud", "Metros, kilometros, centimetros y millas"),
-        ConversionCategory(WEIGHT, "Peso", "Kilogramos, gramos y libras"),
-        ConversionCategory(CURRENCY, "Moneda", "Tasas fijas de ejemplo para uso escolar")
+        ConversionCategory(LENGTH, "Longitud", "Metros, kilometros, centimetros, pulgadas, pies, yardas y millas"),
+        ConversionCategory(WEIGHT, "Peso", "Kilogramos, gramos, libras, onzas y toneladas"),
+        ConversionCategory(CURRENCY, "Moneda", "Tasas fijas de ejemplo: no representan valores bancarios reales")
     )
 
     val units: List<UnitDefinition> = listOf(
@@ -60,13 +65,21 @@ object UnitConversionCatalog {
         UnitDefinition(LENGTH, "Metro", "m", { value -> value }, { value -> value }),
         UnitDefinition(LENGTH, "Kilometro", "km", { value -> value * 1_000.0 }, { value -> value / 1_000.0 }),
         UnitDefinition(LENGTH, "Centimetro", "cm", { value -> value / 100.0 }, { value -> value * 100.0 }),
+        UnitDefinition(LENGTH, "Pulgada", "in", { value -> value * 0.0254 }, { value -> value / 0.0254 }),
+        UnitDefinition(LENGTH, "Pie", "ft", { value -> value * 0.3048 }, { value -> value / 0.3048 }),
+        UnitDefinition(LENGTH, "Yarda", "yd", { value -> value * 0.9144 }, { value -> value / 0.9144 }),
         UnitDefinition(LENGTH, "Milla", "mi", { value -> value * 1_609.344 }, { value -> value / 1_609.344 }),
         UnitDefinition(WEIGHT, "Kilogramo", "kg", { value -> value }, { value -> value }),
         UnitDefinition(WEIGHT, "Gramo", "g", { value -> value / 1_000.0 }, { value -> value * 1_000.0 }),
         UnitDefinition(WEIGHT, "Libra", "lb", { value -> value * 0.453_592_37 }, { value -> value / 0.453_592_37 }),
+        UnitDefinition(WEIGHT, "Onza", "oz", { value -> value * 0.028_349_523_125 }, { value -> value / 0.028_349_523_125 }),
+        UnitDefinition(WEIGHT, "Tonelada", "t", { value -> value * 1_000.0 }, { value -> value / 1_000.0 }),
         UnitDefinition(CURRENCY, "Peso mexicano", "MXN", { value -> value }, { value -> value }),
-        UnitDefinition(CURRENCY, "Dolar estadounidense", "USD", { value -> value * 17.0 }, { value -> value / 17.0 }),
-        UnitDefinition(CURRENCY, "Euro", "EUR", { value -> value * 18.5 }, { value -> value / 18.5 })
+        UnitDefinition(CURRENCY, "Dolar estadounidense", "USD", { value -> value * MXN_PER_USD }, { value -> value / MXN_PER_USD }),
+        UnitDefinition(CURRENCY, "Euro", "EUR", { value -> value * MXN_PER_EUR }, { value -> value / MXN_PER_EUR }),
+        UnitDefinition(CURRENCY, "Dolar canadiense", "CAD", { value -> value * MXN_PER_CAD }, { value -> value / MXN_PER_CAD }),
+        UnitDefinition(CURRENCY, "Libra esterlina", "GBP", { value -> value * MXN_PER_GBP }, { value -> value / MXN_PER_GBP }),
+        UnitDefinition(CURRENCY, "Yen japones", "JPY", { value -> value * MXN_PER_JPY }, { value -> value / MXN_PER_JPY })
     )
 
     private val unitsByCategory: Map<String, List<UnitDefinition>> = units.groupBy { unit ->
