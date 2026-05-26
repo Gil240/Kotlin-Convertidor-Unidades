@@ -1,5 +1,6 @@
 package com.example.kotlinconvertidorunidades.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,26 +12,59 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.kotlinconvertidorunidades.domain.ConversionCategory
+import com.example.kotlinconvertidorunidades.domain.UnitDefinition
 import com.example.kotlinconvertidorunidades.domain.UnitConversionCatalog
 import com.example.kotlinconvertidorunidades.ui.theme.KotlinConvertidorUnidadesTheme
 
 @Composable
 fun ConverterHomeScreen(
     categories: List<ConversionCategory>,
-    unitSymbolsByCategory: Map<String, List<String>>,
+    unitsByCategory: Map<String, List<UnitDefinition>>,
     modifier: Modifier = Modifier
 ) {
+    var selectedCategoryId by rememberSaveable {
+        mutableStateOf(categories.firstOrNull()?.id.orEmpty())
+    }
+    var fromUnitSymbol by rememberSaveable {
+        val firstUnits = unitsByCategory[selectedCategoryId] ?: emptyList()
+        mutableStateOf(firstUnits.firstOrNull()?.symbol.orEmpty())
+    }
+    var toUnitSymbol by rememberSaveable {
+        val firstUnits = unitsByCategory[selectedCategoryId] ?: emptyList()
+        mutableStateOf(firstUnits.getOrNull(1)?.symbol ?: firstUnits.firstOrNull()?.symbol.orEmpty())
+    }
+
+    val selectedCategory = categories.firstOrNull { category ->
+        category.id == selectedCategoryId
+    } ?: categories.firstOrNull()
+    val selectedUnits = unitsByCategory[selectedCategory?.id].orEmpty()
+    val selectedFromUnit = selectedUnits.firstOrNull { unit ->
+        unit.symbol == fromUnitSymbol
+    } ?: selectedUnits.firstOrNull()
+    val selectedToUnit = selectedUnits.firstOrNull { unit ->
+        unit.symbol == toUnitSymbol
+    } ?: selectedUnits.getOrNull(1) ?: selectedUnits.firstOrNull()
+
     Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
         Surface(
             modifier = Modifier
@@ -48,7 +82,26 @@ fun ConverterHomeScreen(
                 }
 
                 item {
-                    CategorySummarySection(categories = categories)
+                    ConversionSelectionSection(
+                        categories = categories,
+                        selectedCategory = selectedCategory,
+                        selectedUnits = selectedUnits,
+                        selectedFromUnit = selectedFromUnit,
+                        selectedToUnit = selectedToUnit,
+                        onCategorySelected = { category ->
+                            selectedCategoryId = category.id
+                            val newUnits = unitsByCategory[category.id].orEmpty()
+                            fromUnitSymbol = newUnits.firstOrNull()?.symbol.orEmpty()
+                            toUnitSymbol = newUnits.getOrNull(1)?.symbol
+                                ?: newUnits.firstOrNull()?.symbol.orEmpty()
+                        },
+                        onFromUnitSelected = { unit ->
+                            fromUnitSymbol = unit.symbol
+                        },
+                        onToUnitSelected = { unit ->
+                            toUnitSymbol = unit.symbol
+                        }
+                    )
                 }
 
                 item {
@@ -63,7 +116,9 @@ fun ConverterHomeScreen(
                     item(key = category.id) {
                         CategoryCard(
                             category = category,
-                            unitSymbols = unitSymbolsByCategory[category.id] ?: emptyList()
+                            unitSymbols = unitsByCategory[category.id]
+                                ?.map { unit -> unit.symbol }
+                                ?: emptyList()
                         )
                     }
                 }
@@ -94,7 +149,16 @@ private fun HeaderSection(totalCategories: Int) {
 }
 
 @Composable
-private fun CategorySummarySection(categories: List<ConversionCategory>) {
+private fun ConversionSelectionSection(
+    categories: List<ConversionCategory>,
+    selectedCategory: ConversionCategory?,
+    selectedUnits: List<UnitDefinition>,
+    selectedFromUnit: UnitDefinition?,
+    selectedToUnit: UnitDefinition?,
+    onCategorySelected: (ConversionCategory) -> Unit,
+    onFromUnitSelected: (UnitDefinition) -> Unit,
+    onToUnitSelected: (UnitDefinition) -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -107,17 +171,104 @@ private fun CategorySummarySection(categories: List<ConversionCategory>) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "Catalogo inicial",
+                text = "Seleccion de conversion",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
+
             Text(
-                text = categories.joinToString(" | ") { category -> category.title },
+                text = selectedCategory?.description ?: "Agrega categorias para comenzar.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
+
+            OptionDropdown(
+                label = "Categoria",
+                selectedText = selectedCategory?.title ?: "Sin categorias",
+                options = categories,
+                optionText = { category -> category.title },
+                onOptionSelected = onCategorySelected
+            )
+
+            OptionDropdown(
+                label = "Convertir de",
+                selectedText = selectedFromUnit?.displayName() ?: "Sin unidades",
+                options = selectedUnits,
+                optionText = { unit -> unit.displayName() },
+                onOptionSelected = onFromUnitSelected
+            )
+
+            OptionDropdown(
+                label = "Convertir a",
+                selectedText = selectedToUnit?.displayName() ?: "Sin unidades",
+                options = selectedUnits,
+                optionText = { unit -> unit.displayName() },
+                onOptionSelected = onToUnitSelected
+            )
         }
     }
+}
+
+@Composable
+private fun <T> OptionDropdown(
+    label: String,
+    selectedText: String,
+    options: List<T>,
+    optionText: (T) -> String,
+    onOptionSelected: (T) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    text = selectedText,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = if (expanded) "^" else "v",
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(text = optionText(option))
+                        },
+                        onClick = {
+                            expanded = false
+                            onOptionSelected(option)
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun UnitDefinition.displayName(): String {
+    return "$name ($symbol)"
 }
 
 @Composable
@@ -171,7 +322,7 @@ fun ConverterHomeScreenPreview() {
     KotlinConvertidorUnidadesTheme {
         ConverterHomeScreen(
             categories = UnitConversionCatalog.getVisibleCategories(),
-            unitSymbolsByCategory = UnitConversionCatalog.getUnitSymbolsByCategory()
+            unitsByCategory = UnitConversionCatalog.getUnitsByCategory()
         )
     }
 }
