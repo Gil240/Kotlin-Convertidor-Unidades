@@ -1,7 +1,7 @@
 package com.example.kotlinconvertidorunidades.ui
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -28,13 +30,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.kotlinconvertidorunidades.domain.ConversionCategory
+import com.example.kotlinconvertidorunidades.domain.ConversionResponse
 import com.example.kotlinconvertidorunidades.domain.UnitDefinition
 import com.example.kotlinconvertidorunidades.domain.UnitConversionCatalog
 import com.example.kotlinconvertidorunidades.ui.theme.KotlinConvertidorUnidadesTheme
+import java.util.Locale
 
 @Composable
 fun ConverterHomeScreen(
@@ -53,6 +58,9 @@ fun ConverterHomeScreen(
         val firstUnits = unitsByCategory[selectedCategoryId] ?: emptyList()
         mutableStateOf(firstUnits.getOrNull(1)?.symbol ?: firstUnits.firstOrNull()?.symbol.orEmpty())
     }
+    var inputText by rememberSaveable {
+        mutableStateOf("")
+    }
 
     val selectedCategory = categories.firstOrNull { category ->
         category.id == selectedCategoryId
@@ -64,6 +72,16 @@ fun ConverterHomeScreen(
     val selectedToUnit = selectedUnits.firstOrNull { unit ->
         unit.symbol == toUnitSymbol
     } ?: selectedUnits.getOrNull(1) ?: selectedUnits.firstOrNull()
+    val conversionResponse = if (inputText.isBlank()) {
+        null
+    } else {
+        UnitConversionCatalog.convertValue(
+            inputText = inputText,
+            fromUnitQuery = selectedFromUnit?.symbol,
+            toUnitQuery = selectedToUnit?.symbol,
+            categoryId = selectedCategory?.id
+        )
+    }
 
     Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
         Surface(
@@ -88,6 +106,8 @@ fun ConverterHomeScreen(
                         selectedUnits = selectedUnits,
                         selectedFromUnit = selectedFromUnit,
                         selectedToUnit = selectedToUnit,
+                        inputText = inputText,
+                        conversionResponse = conversionResponse,
                         onCategorySelected = { category ->
                             selectedCategoryId = category.id
                             val newUnits = unitsByCategory[category.id].orEmpty()
@@ -100,6 +120,9 @@ fun ConverterHomeScreen(
                         },
                         onToUnitSelected = { unit ->
                             toUnitSymbol = unit.symbol
+                        },
+                        onInputChanged = { newInput ->
+                            inputText = newInput
                         }
                     )
                 }
@@ -155,9 +178,12 @@ private fun ConversionSelectionSection(
     selectedUnits: List<UnitDefinition>,
     selectedFromUnit: UnitDefinition?,
     selectedToUnit: UnitDefinition?,
+    inputText: String,
+    conversionResponse: ConversionResponse?,
     onCategorySelected: (ConversionCategory) -> Unit,
     onFromUnitSelected: (UnitDefinition) -> Unit,
-    onToUnitSelected: (UnitDefinition) -> Unit
+    onToUnitSelected: (UnitDefinition) -> Unit,
+    onInputChanged: (String) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -205,6 +231,101 @@ private fun ConversionSelectionSection(
                 optionText = { unit -> unit.displayName() },
                 onOptionSelected = onToUnitSelected
             )
+
+            OutlinedTextField(
+                value = inputText,
+                onValueChange = onInputChanged,
+                modifier = Modifier.fillMaxWidth(),
+                label = {
+                    Text(text = "Valor")
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+            )
+
+            ConversionResultCard(
+                inputText = inputText,
+                selectedFromUnit = selectedFromUnit,
+                selectedToUnit = selectedToUnit,
+                conversionResponse = conversionResponse
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConversionResultCard(
+    inputText: String,
+    selectedFromUnit: UnitDefinition?,
+    selectedToUnit: UnitDefinition?,
+    conversionResponse: ConversionResponse?
+) {
+    val containerColor = when (conversionResponse) {
+        is ConversionResponse.Error -> MaterialTheme.colorScheme.errorContainer
+        else -> MaterialTheme.colorScheme.surface
+    }
+    val contentColor = when (conversionResponse) {
+        is ConversionResponse.Error -> MaterialTheme.colorScheme.onErrorContainer
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(8.dp),
+        color = containerColor,
+        tonalElevation = 1.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = "Resultado",
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor
+            )
+
+            when (conversionResponse) {
+                is ConversionResponse.Success -> {
+                    val result = conversionResponse.result
+
+                    Text(
+                        text = "${formatNumber(result.originalValue)} ${result.fromUnit.symbol} = ${formatNumber(result.convertedValue)} ${result.toUnit.symbol}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = contentColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "${result.fromUnit.name} a ${result.toUnit.name}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = contentColor
+                    )
+                }
+
+                is ConversionResponse.Error -> {
+                    Text(
+                        text = conversionResponse.message,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = contentColor
+                    )
+                }
+
+                null -> {
+                    val fromSymbol = selectedFromUnit?.symbol ?: "-"
+                    val toSymbol = selectedToUnit?.symbol ?: "-"
+                    val helperText = if (inputText.isBlank()) {
+                        "Escribe un valor para convertir de $fromSymbol a $toSymbol."
+                    } else {
+                        "Selecciona unidades validas para continuar."
+                    }
+
+                    Text(
+                        text = helperText,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = contentColor
+                    )
+                }
+            }
         }
     }
 }
@@ -269,6 +390,12 @@ private fun <T> OptionDropdown(
 
 private fun UnitDefinition.displayName(): String {
     return "$name ($symbol)"
+}
+
+private fun formatNumber(value: Double): String {
+    return String.format(Locale.US, "%.4f", value)
+        .trimEnd('0')
+        .trimEnd('.')
 }
 
 @Composable
