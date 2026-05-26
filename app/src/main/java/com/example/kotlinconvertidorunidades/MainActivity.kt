@@ -16,7 +16,7 @@ class MainActivity : ComponentActivity() {
             KotlinConvertidorUnidadesTheme {
                 ConverterHomeScreen(
                     categories = UnitConversionCatalog.getVisibleCategories(),
-                    unitSymbolsByCategory = UnitConversionCatalog.getUnitSymbolsByCategory()
+                    unitsByCategory = UnitConversionCatalog.getUnitsByCategory()
                 )
             }
         }

@@ -107,6 +107,12 @@ object UnitConversionCatalog {
         }
     }
 
+    fun getUnitsByCategory(): Map<String, List<UnitDefinition>> {
+        return unitsByCategory.mapValues { entry ->
+            entry.value
+        }
+    }
+
     fun categoryHasUnit(categoryId: String?, unitQuery: String?): Boolean {
         return getUnitsForCategory(categoryId).any { unit ->
             unit.matches(unitQuery)
